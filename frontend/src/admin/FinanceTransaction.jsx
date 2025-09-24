@@ -1,8 +1,13 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { useReactToPrint } from "react-to-print";
-import { InvoiceTemplate } from "../components/common/InvoiceTemplate";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import {
+  BRAND_CONTACT_LINE,
+  BRAND_DETAILS,
+  BRAND_DOCUMENT_TITLES,
+} from "../constants/branding";
 
 function currency(n) {
   if (isNaN(n)) return "—";
@@ -122,7 +127,6 @@ export default function FinanceTransaction() {
   const [showDeleteModal, setShowDeleteModal] = useState(null); // stores mongoId or txnId
 
   const navigate = useNavigate();
-  const invoiceRef = useRef(null);
 
   useEffect(() => {
     let ignore = false;
@@ -207,8 +211,65 @@ export default function FinanceTransaction() {
     return `Transaction-${year}-${month}`;
   }, [exportDate]);
 
-  const pdfOrder = useMemo(() => {
-    if (!filtered.length) return null;
+  const exportPeriodLabel = useMemo(() => {
+    if (monthFilter === "all") return "All Transactions";
+    const [year, month] = monthFilter.split("-");
+    const y = Number(year);
+    const m = Number(month) - 1;
+    if (!Number.isNaN(y) && !Number.isNaN(m) && m >= 0 && m < 12) {
+      const d = new Date(y, m, 1);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString(undefined, {
+          month: "long",
+          year: "numeric",
+        });
+      }
+    }
+    return monthFilter;
+  }, [monthFilter]);
+
+
+  const handleExportPdf = () => {
+    if (!filtered.length) {
+      alert("No transactions to export.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const marginX = 40;
+    const generatedAt = new Date();
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(22, 101, 52);
+    doc.text(BRAND_DETAILS.name, marginX, 40);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(75, 85, 99);
+    doc.text(BRAND_DETAILS.address, marginX, 58);
+    doc.text(BRAND_CONTACT_LINE, marginX, 72);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(75, 85, 99);
+    const headerTitle = `${BRAND_DOCUMENT_TITLES.report} - Transactions`;
+    doc.text(headerTitle, marginX, 102);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(55, 65, 81);
+
+    const filterLines = [
+      `Period: ${exportPeriodLabel}`,
+      `Type: ${typeFilter === "all" ? "All Types" : typeFilter}`,
+    ];
+    if (q) {
+      filterLines.push(`Search: "${q}"`);
+    }
+    filterLines.forEach((line, index) => {
+      doc.text(line, marginX, 122 + index * 14);
 
     const items = filtered.map((txn) => {
       const amountRaw = Number(txn.amount) || 0;
@@ -221,27 +282,67 @@ export default function FinanceTransaction() {
         qty: 1,
         price: amount,
       };
+
     });
 
-    const totalPrice = items.reduce(
-      (sum, item) => sum + item.price * (item.qty || 1),
-      0
-    );
+    doc.text(`Generated: ${generatedAt.toLocaleString()}`, pageWidth - marginX, 122, {
+      align: "right",
+    });
 
-    return {
-      orderNumber: exportFileBase,
-      createdAt: exportDate,
-      status: "Approved",
-      paymentMethod: "Transactions",
-      customer: {
-        name: "Smart Farm Finance",
-        email: "finance@smartfarm.local",
+    const filterBlockBottom = 122 + (filterLines.length - 1) * 14;
+    const tableStartY = filterLines.length ? filterBlockBottom + 20 : 150;
+
+    const tableBody = filtered.map((txn, idx) => {
+      const amountRaw = Number(txn.amount) || 0;
+      const normalizedAmount =
+        txn.type === "EXPENSE" ? -Math.abs(amountRaw) : Math.abs(amountRaw);
+      return [
+        txn.transaction_id || `TX-${idx + 1}`,
+        shortDate(txn.date),
+        txn.type || "—",
+        txn.category || "—",
+        txn.description || "—",
+        currency(normalizedAmount),
+      ];
+    });
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [
+        [
+          "Transaction ID",
+          "Date",
+          "Type",
+          "Category",
+          "Description",
+          "Amount",
+        ],
+      ],
+      body: tableBody,
+      styles: {
+        fontSize: 9,
+        cellPadding: 6,
+        textColor: [55, 65, 81],
       },
-      shippingAddress: {
-        addressLine1: "Transaction Summary Report",
-        city: "",
-        postalCode: "",
+      headStyles: {
+        fillColor: [240, 253, 244],
+        textColor: [22, 101, 52],
+        lineWidth: 0.3,
+        lineColor: [209, 250, 229],
       },
+
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      columnStyles: {
+        1: { halign: "center" },
+        5: { halign: "right" },
+      },
+      bodyStyles: {
+        valign: "middle",
+      },
+    });
+
       orderItems: items,
       totalPrice,
       discount: { amount: 0 },
@@ -253,19 +354,41 @@ export default function FinanceTransaction() {
     };
   }, [filtered, exportDate, exportFileBase]);
 
-  const triggerPrint = useReactToPrint({
-    contentRef: invoiceRef,
-    documentTitle: exportFileBase,
-    removeAfterPrint: true,
-    suppressErrors: true,
-  });
 
-  const handleExportPdf = () => {
-    if (!filtered.length || !pdfOrder) {
-      alert("No transactions to export.");
-      return;
-    }
-    triggerPrint?.();
+    const totals = filtered.reduce(
+      (acc, txn) => {
+        const amountRaw = Math.abs(Number(txn.amount) || 0);
+        if (txn.type === "EXPENSE") {
+          acc.expense += amountRaw;
+          acc.net -= amountRaw;
+        } else {
+          acc.income += amountRaw;
+          acc.net += amountRaw;
+        }
+        return acc;
+      },
+      { income: 0, expense: 0, net: 0 }
+    );
+
+    const finalY = doc.lastAutoTable?.finalY || tableStartY;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(22, 101, 52);
+    doc.text(`Net Total: ${currency(totals.net)}`, pageWidth - marginX, finalY + 26, {
+      align: "right",
+    });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(75, 85, 99);
+    doc.text(`Income: ${currency(totals.income)}`, pageWidth - marginX, finalY + 42, {
+      align: "right",
+    });
+    doc.text(`Expenses: ${currency(-totals.expense)}`, pageWidth - marginX, finalY + 56, {
+      align: "right",
+    });
+
+    doc.save(`${exportFileBase}.pdf`);
   };
 
   const handleExportExcel = () => {
@@ -740,9 +863,6 @@ export default function FinanceTransaction() {
             </div>
           )}
         </div>
-      </div>
-      <div className="hidden">
-        {pdfOrder && <InvoiceTemplate ref={invoiceRef} order={pdfOrder} />}
       </div>
     </div>
   );
