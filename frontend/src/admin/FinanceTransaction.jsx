@@ -32,7 +32,6 @@ function escapeHtml(text) {
 }
 
 function downloadExcel(filename, rows) {
-
   const headers = [
     "Transaction Id",
     "Date",
@@ -43,7 +42,10 @@ function downloadExcel(filename, rows) {
   ];
 
   const headerRow = `<tr>${headers
-    .map((label) => `<th style="text-align:left;padding:8px;">${escapeHtml(label)}</th>`)
+    .map(
+      (label) =>
+        `<th style="text-align:left;padding:8px;">${escapeHtml(label)}</th>`
+    )
     .join("")}</tr>`;
 
   const bodyRows = rows
@@ -146,7 +148,12 @@ export default function FinanceTransaction() {
         // Normalize: keep both mongo _id (for actions) and transaction_id (for display/export)
         const rows = raw.map((r) => {
           const transactionId =
-            r.transaction_id || r.transactionId || r.tid || r.txnId || r.txn_id || "";
+            r.transaction_id ||
+            r.transactionId ||
+            r.tid ||
+            r.txnId ||
+            r.txn_id ||
+            "";
           const mongoId = r._id || r.id || r.mongoId || r.recordId || undefined;
 
           return {
@@ -221,6 +228,7 @@ export default function FinanceTransaction() {
     return monthFilter;
   }, [monthFilter]);
 
+
   const handleExportPdf = () => {
     if (!filtered.length) {
       alert("No transactions to export.");
@@ -262,6 +270,19 @@ export default function FinanceTransaction() {
     }
     filterLines.forEach((line, index) => {
       doc.text(line, marginX, 122 + index * 14);
+
+    const items = filtered.map((txn) => {
+      const amountRaw = Number(txn.amount) || 0;
+      const amount =
+        txn.type === "EXPENSE" ? -Math.abs(amountRaw) : Math.abs(amountRaw);
+      return {
+        name: `${shortDate(txn.date)} • ${txn.type || "Transaction"} • ${
+          txn.category || "General"
+        }`,
+        qty: 1,
+        price: amount,
+      };
+
     });
 
     doc.text(`Generated: ${generatedAt.toLocaleString()}`, pageWidth - marginX, 122, {
@@ -309,6 +330,7 @@ export default function FinanceTransaction() {
         lineWidth: 0.3,
         lineColor: [209, 250, 229],
       },
+
       alternateRowStyles: {
         fillColor: [248, 250, 252],
       },
@@ -320,6 +342,18 @@ export default function FinanceTransaction() {
         valign: "middle",
       },
     });
+
+      orderItems: items,
+      totalPrice,
+      discount: { amount: 0 },
+      templateOptions: {
+        showBillingDetails: false,
+        showOrderSummary: false,
+        showFooter: false,
+      },
+    };
+  }, [filtered, exportDate, exportFileBase]);
+
 
     const totals = filtered.reduce(
       (acc, txn) => {
@@ -370,11 +404,16 @@ export default function FinanceTransaction() {
       // Prefer mongoId for API path; fall back to transaction_id if needed
       const row = transactions.find((t) => {
         const id = resolveRowId(t);
-        return id && (id === rowKey || t.mongoId === rowKey || t.transaction_id === rowKey);
+        return (
+          id &&
+          (id === rowKey || t.mongoId === rowKey || t.transaction_id === rowKey)
+        );
       });
       const idForApi = resolveRowId(row) || rowKey;
       if (!idForApi) {
-        alert("Cannot delete this transaction because its identifier is missing.");
+        alert(
+          "Cannot delete this transaction because its identifier is missing."
+        );
         return;
       }
       await api.delete(`/transactions/${idForApi}`);
@@ -690,83 +729,83 @@ export default function FinanceTransaction() {
                           key={rowId || r.mongoId || r.transaction_id}
                           className="hover:bg-gray-50 transition-colors"
                         >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                          {r.transaction_id || "—"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {shortDate(r.date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              r.type === "INCOME"
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {r.type === "INCOME" ? "💰" : "💸"} {r.type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {r.category || "—"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {r.description || "—"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {currency(r.amount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2">
-                            <button
-                              onClick={() => handleEdit(r)}
-                              className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                            {r.transaction_id || "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {shortDate(r.date)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                r.type === "INCOME"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
                             >
-                              <svg
-                                className="w-3 h-3 mr-1"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                              {r.type === "INCOME" ? "💰" : "💸"} {r.type}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {r.category || "—"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                            {r.description || "—"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {currency(r.amount)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end space-x-2">
+                              <button
+                                onClick={() => handleEdit(r)}
+                                className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                              </svg>
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                const id = rowId;
-                                if (!id) {
-                                  alert(
-                                    "Cannot delete this transaction because its identifier is missing."
-                                  );
-                                  return;
-                                }
-                                setShowDeleteModal(id);
-                              }}
-                              className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50 transition-colors"
-                            >
-                              <svg
-                                className="w-3 h-3 mr-1"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const id = rowId;
+                                  if (!id) {
+                                    alert(
+                                      "Cannot delete this transaction because its identifier is missing."
+                                    );
+                                    return;
+                                  }
+                                  setShowDeleteModal(id);
+                                }}
+                                className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50 transition-colors"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                              Delete
-                            </button>
-                          </div>
-                        </td>
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                                Delete
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
