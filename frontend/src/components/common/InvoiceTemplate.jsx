@@ -25,6 +25,49 @@ export const InvoiceTemplate = forwardRef(function InvoiceTemplate({ order }, re
   const customer = order?.customer || {};
   const shipping = order?.shippingAddress || {};
   const items = Array.isArray(order?.orderItems) ? order.orderItems : [];
+  const templateOptions = order?.templateOptions || {};
+
+  const showBillingDetails =
+    templateOptions.showBillingDetails ?? templateOptions.showCustomerSection ?? true;
+  const showOrderSummary =
+    templateOptions.showOrderSummary ?? templateOptions.showMetaSummary ?? true;
+  const showFooter = templateOptions.showFooter ?? true;
+  const footerLines = Array.isArray(templateOptions.footerLines)
+    ? templateOptions.footerLines
+    : [
+        "Thank you for your business!",
+        "If you have any questions about this invoice, please contact us.",
+      ];
+
+  const billingSection =
+    showBillingDetails && (
+      <div>
+        <h3 className="font-semibold mb-1">Bill To:</h3>
+        <p>{customer.name || "—"}</p>
+        <p>{shipping.addressLine1 || "—"}</p>
+        <p>
+          {shipping.city || "—"}
+          {shipping.postalCode ? `, ${shipping.postalCode}` : ""}
+        </p>
+        <p>{customer.email || "—"}</p>
+      </div>
+    );
+
+  const summarySection =
+    showOrderSummary && (
+      <div
+        className={`text-right ${
+          billingSection ? "" : "col-span-2 md:col-span-1"
+        }`}
+      >
+        <p className="font-semibold">
+          Order Status: <span className="font-normal">{order?.status || "—"}</span>
+        </p>
+        <p className="font-semibold">
+          Payment Method: <span className="font-normal">{order?.paymentMethod || "Stripe (Card)"}</span>
+        </p>
+      </div>
+    );
 
   return (
     <div ref={ref} className="p-8 bg-white text-gray-800">
@@ -45,26 +88,16 @@ export const InvoiceTemplate = forwardRef(function InvoiceTemplate({ order }, re
       </header>
 
       {/* Customer / Meta */}
-      <section className="grid grid-cols-2 gap-8 my-8">
-        <div>
-          <h3 className="font-semibold mb-1">Bill To:</h3>
-          <p>{customer.name || "—"}</p>
-          <p>{shipping.addressLine1 || "—"}</p>
-          <p>
-            {shipping.city || "—"}
-            {shipping.postalCode ? `, ${shipping.postalCode}` : ""}
-          </p>
-          <p>{customer.email || "—"}</p>
-        </div>
-        <div className="text-right">
-          <p className="font-semibold">
-            Order Status: <span className="font-normal">{order?.status || "—"}</span>
-          </p>
-          <p className="font-semibold">
-            Payment Method: <span className="font-normal">{order?.paymentMethod || "Stripe (Card)"}</span>
-          </p>
-        </div>
-      </section>
+      {(billingSection || summarySection) && (
+        <section
+          className={`grid gap-8 my-8 ${
+            billingSection && summarySection ? "grid-cols-2" : "grid-cols-1"
+          }`}
+        >
+          {billingSection}
+          {summarySection}
+        </section>
+      )}
 
       {/* Items */}
       <section>
@@ -130,10 +163,13 @@ export const InvoiceTemplate = forwardRef(function InvoiceTemplate({ order }, re
       </section>
 
       {/* Footer */}
-      <footer className="mt-12 text-center text-gray-500 text-sm">
-        <p>Thank you for your business!</p>
-        <p>If you have any questions about this invoice, please contact us.</p>
-      </footer>
+      {showFooter && (
+        <footer className="mt-12 text-center text-gray-500 text-sm">
+          {footerLines.map((line, idx) => (
+            <p key={idx}>{line}</p>
+          ))}
+        </footer>
+      )}
     </div>
   );
 });
