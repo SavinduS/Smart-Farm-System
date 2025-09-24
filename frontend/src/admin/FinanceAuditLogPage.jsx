@@ -31,6 +31,104 @@ const formatDateTime = (iso) => {
   }
 };
 
+const currencyFormatter = new Intl.NumberFormat("en-LK", {
+  style: "currency",
+  currency: "LKR",
+  maximumFractionDigits: 0,
+});
+
+const FIELD_PRIORITIES = [
+  { key: "transaction_id", label: "Transaction ID" },
+  { key: "transactionId", label: "Transaction ID" },
+  { key: "type", label: "Type" },
+  { key: "date", label: "Date" },
+  { key: "category", label: "Category" },
+  { key: "amount", label: "Amount" },
+  { key: "description", label: "Description" },
+  { key: "createdAt", label: "Created At" },
+  { key: "updatedAt", label: "Updated At" },
+  { key: "_id", label: "Record ID" },
+  { key: "__v", label: "Version" },
+];
+
+const prettifyLabel = (key) => {
+  if (key === null || key === undefined) return "Field";
+  return String(key)
+    .replace(/[_-]/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const DATE_ONLY_FIELDS = new Set(["date"]);
+const DATE_TIME_FIELDS = new Set(["timestamp", "createdAt", "updatedAt"]);
+
+function formatValue(value, key) {
+  if (value === undefined || value === null || value === "") {
+    return <span className="text-gray-400">—</span>;
+  }
+
+  const numericValue = Number(value);
+  if (key === "amount" && !Number.isNaN(numericValue)) {
+    return (
+      <span className="font-medium text-gray-900">
+        {currencyFormatter.format(numericValue)}
+      </span>
+    );
+  }
+
+  const keyName = String(key || "");
+  const keyLower = keyName.toLowerCase();
+  const parsedDate = new Date(value);
+  if (
+    !Number.isNaN(parsedDate.getTime()) &&
+    (DATE_ONLY_FIELDS.has(keyName) ||
+      DATE_TIME_FIELDS.has(keyName) ||
+      keyLower.includes("date") ||
+      keyLower.includes("time"))
+  ) {
+    if (DATE_ONLY_FIELDS.has(keyName) || keyLower === "date") {
+      return parsedDate.toLocaleDateString("en-LK", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      });
+    }
+
+    return (
+      <span className="font-mono text-[11px] text-gray-600">
+        {formatDateTime(parsedDate.toISOString())}
+      </span>
+    );
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return value.toLocaleString("en-LK");
+  }
+
+  if (Array.isArray(value)) {
+    if (!value.length) return <span className="text-gray-400">—</span>;
+    return (
+      <span className="font-mono text-[11px] text-gray-600 whitespace-pre-wrap">
+        {value.join(", ")}
+      </span>
+    );
+  }
+
+  if (typeof value === "object") {
+    return (
+      <code className="block font-mono text-[11px] text-gray-600 whitespace-pre-wrap">
+        {JSON.stringify(value, null, 2)}
+      </code>
+    );
+  }
+
+  return String(value);
+}
+
 function downloadCSV(filename, rows) {
   const headers = [
     "timestamp",
@@ -67,6 +165,26 @@ function downloadCSV(filename, rows) {
 /* ---------- Change Block ---------- */
 function ChangeBlock({ originalData, newData }) {
   const [expanded, setExpanded] = useState(false);
+  const fields = useMemo(() => {
+    const keys = new Set([
+      ...Object.keys(originalData || {}),
+      ...Object.keys(newData || {}),
+    ]);
+
+    const prioritized = [];
+    FIELD_PRIORITIES.forEach((field) => {
+      if (keys.has(field.key)) {
+        prioritized.push({ ...field });
+        keys.delete(field.key);
+      }
+    });
+
+    keys.forEach((key) => {
+      prioritized.push({ key, label: prettifyLabel(key) });
+    });
+
+    return prioritized;
+  }, [originalData, newData]);
 
   return (
     <div className="text-sm">
@@ -88,11 +206,25 @@ function ChangeBlock({ originalData, newData }) {
               </div>
             </div>
             <div className="p-3">
-              <pre className="text-xs text-gray-600 overflow-auto max-h-48 whitespace-pre-wrap">
-                {JSON.stringify(originalData ?? null, null, 2)}
-              </pre>
+              {fields.length ? (
+                <dl className="divide-y divide-gray-100">
+                  {fields.map(({ key, label }) => (
+                    <div key={`orig-${key}`} className="py-2 grid grid-cols-3 gap-2">
+                      <dt className="text-xs font-medium text-gray-600 col-span-1">
+                        {label}
+                      </dt>
+                      <dd className="text-xs text-gray-800 col-span-2 whitespace-pre-wrap">
+                        {formatValue(originalData?.[key], key)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-xs text-gray-500 italic">No data recorded.</p>
+              )}
             </div>
           </div>
+
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="bg-emerald-50 border-b border-emerald-100 px-3 py-2">
               <div className="flex items-center gap-2 text-emerald-700 font-medium text-sm">
@@ -101,9 +233,22 @@ function ChangeBlock({ originalData, newData }) {
               </div>
             </div>
             <div className="p-3">
-              <pre className="text-xs text-gray-600 overflow-auto max-h-48 whitespace-pre-wrap">
-                {JSON.stringify(newData ?? null, null, 2)}
-              </pre>
+              {fields.length ? (
+                <dl className="divide-y divide-gray-100">
+                  {fields.map(({ key, label }) => (
+                    <div key={`new-${key}`} className="py-2 grid grid-cols-3 gap-2">
+                      <dt className="text-xs font-medium text-gray-600 col-span-1">
+                        {label}
+                      </dt>
+                      <dd className="text-xs text-gray-800 col-span-2 whitespace-pre-wrap">
+                        {formatValue(newData?.[key], key)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-xs text-gray-500 italic">No data recorded.</p>
+              )}
             </div>
           </div>
         </div>
