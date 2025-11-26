@@ -18,7 +18,6 @@ Built with **React + Vite**, **Node.js/Express**, **MongoDB**, **Tailwind**, **S
 
 - React (Vite)
 - React Query
-- Radix UI
 - Tailwind CSS
 - Axios
 - React Router
@@ -182,54 +181,6 @@ VITE_API_BASE_URL=http://localhost:5001/api
 cd frontend
 npm run dev
 ```
-
----
-
-## 🧪 Testing & Quality
-
-### Backend Tests
-
-```bash
-cd backend && npm test
-```
-
-### Frontend Tests
-
-```bash
-cd frontend && npm test
-```
-
-### Linting (Frontend)
-
-```bash
-npm run lint
-```
-
----
-
-## 📦 Production Build
-
-### Build Frontend
-
-```bash
-cd frontend
-npm run build
-```
-
-### Start Backend with PM2
-
-```bash
-pm2 start backend/server.js
-```
-
-### Set Production API URL
-
-In `frontend/.env`:
-
-```env
-VITE_API_BASE_URL=https://your-backend-domain/api
-```
-
 ---
 
 ## 🎓 Why This Project? (University Group Project)
@@ -248,8 +199,8 @@ It demonstrates full‑stack engineering skills including authentication, data m
 
 ## 🧑‍🤝‍🧑 Contributors (Group Project)
 
-- Savindu Weerarathna -
+- Savindu Weerarathna - https://www.linkedin.com/in/savinduweerarathna/
 - Wathsika Pallimulla - https://www.linkedin.com/in/wathsika-pallimulla-266242344/
-- Wishwa Dilshan -
-- Supun Anjana -
-- Dulmi Kalupahana -
+- Wishwa Dilshan - https://www.linkedin.com/in/wishwa-dilshan-87a055336/
+- Supun Anjana - https://www.linkedin.com/in/supun-anjana-bb26342a0/
+- Dulmi Kalupahana - https://www.linkedin.com/in/dulmi-kalupahana/
