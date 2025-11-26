@@ -1,110 +1,255 @@
-# Smart Farm System
+# 🌱 Smart Farm System – Full-Stack Farm Management Platform
 
-## Overview
-Smart Farm System is a full-stack farm management platform that combines livestock tracking, crop planning, staff administration, payroll, and e-commerce into one dashboard. The backend is built with Node.js/Express and MongoDB, while the frontend is a React + Vite single-page application styled with Tailwind CSS.
+A modern, full-stack Smart Farm Management System developed as a **university group project**, designed to centralize and optimize farm operations including livestock, crops, workforce, finance, and e-commerce.
 
-### Highlights
-- Livestock: cow registry, milk production, health records, and breeding workflows.
-- Crop management: fields, inputs, plans, and application tracking for farm operations.
-- Workforce: employee profiles, attendance, leave requests, tasks, and performance reviews.
-- Finance: payroll settings, payouts, internal transactions, and automated invoice PDF generation.
-- Commerce: product catalog, discounts, Stripe checkout + webhooks, and customer orders.
-- Communications: contact forms, chat, audit logs, and report exports.
+Built with **React + Vite**, **Node.js/Express**, **MongoDB**, **Tailwind**, **Stripe**, **Cloudinary**, and **Google OAuth**, the system demonstrates real-world full‑stack engineering with secure authentication, automated payroll, PDF invoicing, and integrated online product sales.
 
-## Project Structure
-- **backend/** – REST API (Express, MongoDB, Stripe, Cloudinary, Google OAuth, Nodemailer)
-- **frontend/** – React client (Vite, React Query, Radix UI, Tailwind)
+---
 
-## Prerequisites
-- Node.js 18+ and npm
-- MongoDB instance (local or hosted)
-- Stripe account + CLI (for local webhook testing)
-- Cloudinary account (for media uploads)
+## 🚀 Live Demo
 
-## Getting Started
-Clone the repository and install dependencies in each workspace:
+👉 **[https://smart-farm-system-deployed-frontend.onrender.com](https://smart-farm-system-deployed-frontend.onrender.com)**
+
+---
+
+## 🛠️ Tech Stack
+
+### **Frontend**
+
+- React (Vite)
+- React Query
+- Radix UI
+- Tailwind CSS
+- Axios
+- React Router
+- JWT Authentication + Google OAuth
+
+### **Backend**
+
+- Node.js + Express
+- MongoDB + Mongoose
+- JWT Authentication
+- Cloudinary (media uploads)
+- Stripe (checkout + webhooks)
+- Nodemailer (SMTP emails)
+- PDFKit (invoice PDF generation)
+
+### **DevOps / Tools**
+
+- Render (deployment)
+
+---
+
+## 🌾 Key Features
+
+### 🐄 Livestock Management
+
+- Cow registry with breed, date of birth, identification
+- Milk production logs
+- Health & disease tracking
+- Breeding workflows
+
+### 🌱 Crop Management
+
+- Field registry & seasonal plans
+- Input & fertilizer tracking
+- Activity logs and application timelines
+
+### 👨‍🌾 Workforce Management
+
+- Employee profiles
+- Attendance tracking
+- Leave requests
+- Task assignments & performance reviews
+
+### 💵 Finance & Payroll
+
+- Payroll settings & payouts
+- Allowances, deductions, tax configurations
+- Automated PDF invoice/tax report generation
+- Internal transaction history
+
+### 🛒 E-Commerce
+
+- Product listings
+- Inventory & discount management
+- Stripe checkout
+- Webhook‑verified orders
+
+### 📊 Additional Modules
+
+- Contact forms
+- Internal chat
+- Audit logs
+- Report exports (PDF/CSV)
+
+---
+
+## 📁 Project Structure
+
+```
+smart-farm-system/
+│
+├── backend/        # REST API (Express + MongoDB)
+│   ├── models/
+│   ├── controllers/
+│   ├── routes/
+│   ├── utils/
+│   ├── config/
+│   └── uploads/
+│
+└── frontend/       # React + Vite application
+    ├── src/
+    ├── components/
+    ├── pages/
+    ├── hooks/
+    └── lib/
+```
+
+---
+
+## ⚙️ Prerequisites
+
+- Node.js 18+
+- npm
+- MongoDB (local or hosted)
+- Stripe account
+- Cloudinary account
+
+---
+
+## 🚀 Getting Started
+
+### 1️⃣ Clone the Project
+
+```bash
+git clone <repo-url>
+```
+
+### 2️⃣ Install Dependencies
 
 ```bash
 npm install --prefix backend
 npm install --prefix frontend
 ```
 
-### Backend
-1. Create `backend/.env` with the variables below.
-2. Start MongoDB and run the API:
-   ```bash
-   cd backend
-   npm run dev
-   ```
-3. (Optional) Forward Stripe webhooks locally:
-   ```bash
-   npm run stripe:listen
-   ```
+---
 
-#### Backend Environment Variables
-| Variable | Description |
-| --- | --- |
-| `PORT` | API port (default `5001`) |
-| `CLIENT_URL` | Frontend origin allowed for CORS |
-| `MONGO_URI` | MongoDB connection string |
-| `JWT_SECRET` | Secret key for JWT signing (required) |
-| `JWT_EXPIRES_IN` | JWT expiration (e.g., `7d`) |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID (enables Google login) |
-| `STRIPE_SECRET_KEY` | Stripe API secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
-| `CLOUDINARY_CLOUD_NAME` | Cloudinary account name |
-| `CLOUDINARY_API_KEY` | Cloudinary API key |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret |
-| `SMTP_HOST` | SMTP server hostname (mailer) |
-| `SMTP_PORT` | SMTP server port |
-| `SMTP_SECURE` | `true` to force TLS, otherwise `false` |
-| `SMTP_USER` | SMTP username (optional if server allows unauth) |
-| `SMTP_PASS` | SMTP password (optional if server allows unauth) |
-| `SMTP_FROM_EMAIL` | Default from email address |
-| `SMTP_FROM_NAME` | Friendly sender name |
-| `INVOICE_BRAND_NAME` | Label used on generated invoices |
-| `INVOICE_BRAND_ADDRESS` | Invoice address block |
-| `INVOICE_BRAND_EMAIL` | Contact email shown on invoices |
-| `INVOICE_BRAND_PHONE` | Contact phone shown on invoices |
-| `FARM_NAME` | Farm display name |
-| `FARM_ADDRESS` | Farm address |
-| `FARM_CONTACT` | Farm contact info |
-| `NODE_ENV` | Optional Node environment flag |
+## 🔧 Backend Setup
 
-Example `backend/.env`:
+### Create `backend/.env`
+
 ```env
 PORT=5001
 CLIENT_URL=http://localhost:5173
 MONGO_URI=mongodb://127.0.0.1:27017/smart-farm
 JWT_SECRET=super-secret
+
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
+
 CLOUDINARY_CLOUD_NAME=demo
 CLOUDINARY_API_KEY=123
 CLOUDINARY_API_SECRET=abc
 ```
 
-### Frontend
-1. Create `frontend/.env`:
-   ```env
-   VITE_API_BASE_URL=http://localhost:5001/api
-   ```
-2. Start the Vite dev server:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+### Start Backend
 
-## Development Notes
-- Uploaded media is served from `backend/uploads` at `/uploads/...`.
-- Stripe webhooks are exposed at `/api/orders/webhook`, `/api/stripe/webhook`, and `/api/payment/webhook`.
-- The backend expects JWT-authenticated requests for most resources; seed users accordingly before testing protected flows.
+```bash
+cd backend
+npm run dev
+```
 
-## Testing & Quality
-- Backend tests: `cd backend && npm test`
-- Frontend tests: `cd frontend && npm test`
-- Frontend linting: `cd frontend && npm run lint`
+### Optional: Stripe Webhooks
 
-## Production Build
-- Build frontend assets: `cd frontend && npm run build`
-- Serve the backend with a process manager (e.g., pm2) and configure environment variables as shown above. Ensure the frontend points to the deployed API base URL.
+```bash
+npm run stripe:listen
+```
+
+---
+
+## 🌐 Frontend Setup
+
+### Create `frontend/.env`
+
+```env
+VITE_API_BASE_URL=http://localhost:5001/api
+```
+
+### Start Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+---
+
+## 🧪 Testing & Quality
+
+### Backend Tests
+
+```bash
+cd backend && npm test
+```
+
+### Frontend Tests
+
+```bash
+cd frontend && npm test
+```
+
+### Linting (Frontend)
+
+```bash
+npm run lint
+```
+
+---
+
+## 📦 Production Build
+
+### Build Frontend
+
+```bash
+cd frontend
+npm run build
+```
+
+### Start Backend with PM2
+
+```bash
+pm2 start backend/server.js
+```
+
+### Set Production API URL
+
+In `frontend/.env`:
+
+```env
+VITE_API_BASE_URL=https://your-backend-domain/api
+```
+
+---
+
+## 🎓 Why This Project? (University Group Project)
+
+This Smart Farm System was built as a **university group project** to address real agricultural management challenges:
+
+- Centralizing livestock and crop data
+- Reducing manual paperwork
+- Automating payroll and financial records
+- Supporting modern e-commerce for farm products
+- Improving communication and operational transparency
+
+It demonstrates full‑stack engineering skills including authentication, data modeling, real-time state management, secure payments, cloud integrations, and PDF generation.
+
+---
+
+## 🧑‍🤝‍🧑 Contributors (Group Project)
+
+- Savindu Weerarathna -
+- Wathsika Pallimulla - https://www.linkedin.com/in/wathsika-pallimulla-266242344/
+- Wishwa Dilshan -
+- Supun Anjana -
+- Dulmi Kalupahana -
