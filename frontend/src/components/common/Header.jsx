@@ -99,7 +99,7 @@ export default function Header() {
                 <div className="relative" ref={dropdownRef}>
                     <button onClick={() => setShowProfileDropdown(!showProfileDropdown)} className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100">
                         <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-semibold">
-                            {user.fullName.charAt(0)}
+                            {user.fullName?.charAt(0)}
                         </div>
                          <i className={`fas fa-chevron-down text-xs transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
                     </button>
