@@ -4,34 +4,23 @@ import {
     createDiscount,
     updateDiscount,
     deleteDiscount,
-   getActiveDiscount,
+    getActiveDiscount,
     validateDiscount
-
 } from '../controllers/discount.controller.js';
+import { auth, requireRole } from '../middlewares/auth.js';
 
 const router = express.Router();
 
-// --- THIS IS THE FIX ---
-// Add the express.json() middleware. This will parse the JSON body
-// for the POST and PUT requests defined below.
 router.use(express.json());
 
-// GET /api/discounts/active
+// Public or Customer-accessible
 router.get('/active', getActiveDiscount);
-
-// POST /api/discounts/validate
 router.post('/validate', validateDiscount);
 
-// GET /api/discounts
-router.get('/', getAllDiscounts);
-
-// POST /api/discounts
-router.post('/', createDiscount);
-
-// PUT /api/discounts/:id
-router.put('/:id', updateDiscount);
-
-// DELETE /api/discounts/:id
-router.delete('/:id', deleteDiscount);
+// Admin/Employee only
+router.get('/', auth, requireRole('Admin', 'Employee'), getAllDiscounts);
+router.post('/', auth, requireRole('Admin', 'Employee'), createDiscount);
+router.put('/:id', auth, requireRole('Admin', 'Employee'), updateDiscount);
+router.delete('/:id', auth, requireRole('Admin', 'Employee'), deleteDiscount);
 
 export default router;

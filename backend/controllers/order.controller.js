@@ -178,12 +178,16 @@ export const createCheckoutSession = async (req, res, next) => {
 // --- Helper: Fulfill Order (Webhook) ---
 const fulfillOrder = async (session) => {
   try {
+    console.log(`Fulfilling order for session: ${session.id}`);
     const metadata = session.metadata || {};
     const defaultImage = 'https://via.placeholder.com/300x300.png?text=Product';
 
     const decodeCartItems = () => {
       const rawCartItems = metadata.cartItems;
-      if (!rawCartItems) return [];
+      if (!rawCartItems) {
+        console.warn('No cartItems found in metadata');
+        return [];
+      }
 
       const parseJsonSafely = (value) => {
         try {
@@ -226,7 +230,10 @@ const fulfillOrder = async (session) => {
         parsed = parseJsonSafely(rawCartItems);
       }
 
-      if (!Array.isArray(parsed)) return [];
+      if (!Array.isArray(parsed)) {
+         console.warn('Decoded cartItems is not an array');
+         return [];
+      }
 
       if (parsed.every((entry) => Array.isArray(entry))) {
         return parsed.map((entry) => {
@@ -264,6 +271,12 @@ const fulfillOrder = async (session) => {
     };
 
     const decodedCartItems = decodeCartItems();
+    if (decodedCartItems.length === 0) {
+      console.error('No cart items decoded for session:', session.id);
+      // We might still want to proceed if we can recover items from Stripe line items, 
+      // but for now let's log the error.
+    }
+
     const totalQuantity = decodedCartItems.reduce((sum, item) => sum + (item.qty || 0), 0);
     const sessionTotalCents = typeof session.amount_subtotal === 'number'
       ? session.amount_subtotal
@@ -277,19 +290,22 @@ const fulfillOrder = async (session) => {
 
     for (const item of decodedCartItems) {
       const productId = item.productId ? item.productId.toString() : undefined;
-      let productDoc = null;
+      
+      if (!productId) {
+        console.warn('Skipping item with missing productId in fulfillment');
+        continue;
+      }
 
-      if (productId) {
-        if (productCache.has(productId)) {
-          productDoc = productCache.get(productId);
-        } else {
-          try {
-            productDoc = await Product.findById(productId);
-          } catch (error) {
-            console.error('Failed to load product during fulfillment:', error);
-          }
-          productCache.set(productId, productDoc || null);
+      let productDoc = null;
+      if (productCache.has(productId)) {
+        productDoc = productCache.get(productId);
+      } else {
+        try {
+          productDoc = await Product.findById(productId);
+        } catch (error) {
+          console.error(`Failed to load product ${productId} during fulfillment:`, error);
         }
+        productCache.set(productId, productDoc || null);
       }
 
       const priceFromMetadata = item.metadataPriceCents !== undefined
@@ -311,26 +327,30 @@ const fulfillOrder = async (session) => {
       });
     }
 
+    if (orderItems.length === 0) {
+        console.error('Order items array is empty after processing. Order might fail validation.');
+    }
+
     const customer = {
-      name: metadata.customerName,
-      email: session.customer_details?.email || session.customer_email || metadata.customerEmail,
+      name: metadata.customerName || session.customer_details?.name || 'Customer',
+      email: session.customer_details?.email || session.customer_email || metadata.customerEmail || 'unknown@example.com',
     };
 
     const shippingAddress = {
-      addressLine1: metadata.addressLine1,
-      city: metadata.city,
-      postalCode: metadata.postalCode,
-      country: 'Sri Lanka',
+      addressLine1: metadata.addressLine1 || session.customer_details?.address?.line1 || 'N/A',
+      city: metadata.city || session.customer_details?.address?.city || 'N/A',
+      postalCode: metadata.postalCode || session.customer_details?.address?.postal_code || 'N/A',
+      country: session.customer_details?.address?.country || 'Sri Lanka',
     };
 
     // Optional discount
     let discountInfo;
-    if (metadata.discountId && session.total_details?.amount_discount) {
+    if (metadata.discountId) {
       const discount = await Discount.findById(metadata.discountId);
       if (discount) {
         discountInfo = {
           discountId: discount._id,
-          amount: session.total_details.amount_discount / 100,
+          amount: (session.total_details?.amount_discount || 0) / 100,
           code: discount.code,
           type: discount.type,
         };
@@ -341,7 +361,7 @@ const fulfillOrder = async (session) => {
       }
     }
 
-     const orderNumber = await Order.generateOrderNumber();
+    const orderNumber = await Order.generateOrderNumber();
 
     const order = new Order({
       orderNumber,
@@ -357,6 +377,7 @@ const fulfillOrder = async (session) => {
     });
 
     const createdOrder = await order.save();
+    console.log(`Order ${createdOrder.orderNumber} successfully created.`);
 
     try {
       const transaction = await Transaction.create({
@@ -380,10 +401,18 @@ const fulfillOrder = async (session) => {
     }
     
     try {
+      // We generate the invoice PDF synchronously to ensure we have it, 
+      // but send the email asynchronously so we don't block the webhook response.
       const invoiceBuffer = await generateInvoicePdf(createdOrder);
-      await sendOrderEmail(createdOrder, invoiceBuffer);
+      
+      // Fire and forget, or handle it in the background
+      sendOrderEmail(createdOrder, invoiceBuffer).catch((err) => {
+        console.error(`[Background] Email delivery failed for order ${createdOrder.orderNumber}:`, err.message);
+      });
+      
+      console.log(`Invoice generated and email dispatch initiated for order: ${createdOrder.orderNumber}`);
     } catch (error) {
-      console.error('Order invoice/email dispatch failed:', error);
+      console.error('Order invoice/email preparation failed:', error.message);
     }
     
     // Decrement stock
@@ -481,10 +510,28 @@ export const updateOrderStatus = async (req, res, next) => {
 // --- Public: Get Order by Stripe Session ID ---
 export const getOrderBySessionId = async (req, res, next) => {
   try {
-    const order = await Order.findOne({ stripeSessionId: req.params.sessionId });
+    const { sessionId } = req.params;
+    let order = await Order.findOne({ stripeSessionId: sessionId });
+
+    // Fallback: If order not found, check Stripe to see if session is completed
+    if (!order) {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status === 'paid' || session.status === 'complete') {
+        // Double check in case of race condition
+        order = await Order.findOne({ stripeSessionId: sessionId });
+        if (!order) {
+          console.log(`Order for session ${sessionId} not found in DB. Fulfilling now (fallback).`);
+          order = await fulfillOrder(session);
+        }
+      }
+    }
+
     if (!order) return res.status(404).json({ message: "Order not found." });
     res.status(200).json(order);
-  } catch (error) { next(error); }
+  } catch (error) {
+    console.error("Error in getOrderBySessionId:", error);
+    next(error);
+  }
 };
 
 // --- User: My Orders (auth) ---

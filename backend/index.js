@@ -126,7 +126,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 
 app.use("/api/products", productRoutes);
-app.use("/api/orders", auth, requireRole("Admin", "Employee","Customer"), orderRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/reports", auth, requireRole("Admin", "Employee","Customer"), reportRoutes);
 
 app.use("/api/admin", auth, requireRole("Admin", "Employee"), adminRoutes);
@@ -141,12 +141,7 @@ app.use(
   breedingRoutes
 );
 
-app.use(
-  "/api/discounts",
-  auth,
-  requireRole("Admin", "Employee"),
-  discountRoutes
-);
+app.use("/api/discounts", discountRoutes);
 
 app.use("/api/admin/users", auth, requireRole("Admin"), staffOwnerRoutes); // cleaner
 app.use(

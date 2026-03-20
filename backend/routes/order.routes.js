@@ -21,7 +21,7 @@ const router = express.Router();
 
 // --- Public & Customer-Facing ---
 
-router.post('/create-checkout-session', express.json(), createCheckoutSession);
+router.post('/create-checkout-session', protect, requireRole('Admin', 'Employee', 'Customer'), express.json(), createCheckoutSession);
 
 // ✅ Make the session lookup PUBLIC so success page works without login
 router.get('/session/:sessionId', getOrderBySessionId);
